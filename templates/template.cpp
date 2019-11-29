@@ -36,8 +36,20 @@ public:
         tree[node] = tree[node*2] + tree[node*2+1];
     }
     void add(int left, int right, T value, int node, int cl, int cr) {
+        if (lazy[node]) {
+            tree[node] += (cr-cl+1)*lazy[node];
+            if (cr>cl) {
+                lazy[node*2] += lazy[node];
+                lazy[node*2+1] += lazy[node];
+            }
+            lazy[node] = 0;
+        }
         if ((cl == left) && (cr == right)) {
-            lazy[node] += value;
+            tree[node] += (cr-cl+1) * value;
+            if (cr>cl) {
+                lazy[node*2] += value;
+                lazy[node*2+1] += value;
+            }
             return;
         }
         int mid = (cl+cr)/2;
@@ -145,7 +157,7 @@ public:
                 lazy[node*2] += lazy[node];
                 lazy[node*2+1] += lazy[node];
             }
-            lazyo[node] = 0;
+            lazy[node] = 0;
         }
         if ((left == cl) && (right == cr)) {
             return treeMax[node];
@@ -167,7 +179,7 @@ public:
                 lazy[node*2] += lazy[node];
                 lazy[node*2+1] += lazy[node];
             }
-            lazyo[node] = 0;
+            lazy[node] = 0;
         }
         if ((left == cl) && (right == cr)) {
             return treeMin[node];
@@ -195,13 +207,13 @@ public:
     vector<vector<int>> t;
     vector<int> heights;
     vector<int> f;
-    euler(int node, int h) {
-        heights.push(h);
+    void euler(int node, int h) {
+        heights.push_back(h);
         for (auto it=t[node].begin();it<t[node].end();it++) {
             if (!f[*it]) {
                 f[*it] = heights.size()-1;
-                euler(*it);
-                heights.push(h);
+                euler(*it,h+1);
+                heights.push_back(h);
             }
         }
     }
@@ -217,5 +229,5 @@ public:
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(0);
-    SumSegTree<pair<int,int>> t;
+    return 0;
 }
