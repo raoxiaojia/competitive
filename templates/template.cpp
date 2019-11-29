@@ -91,9 +91,9 @@ public:
         treeMax.clear();
         treeMin.clear();
         lazy.clear();
-        treeMax.resize((r-l+1)*4+10,0);
-        treeMin.resize((r-l+1)*4+10,0);
-        lazy.resize((r-l+1)*4+10,0);
+        treeMax.resize((r-l+1)*2+10,0);
+        treeMin.resize((r-l+1)*2+10,0);
+        lazy.resize((r-l+1)*2+10,0);
     }
     void add(int left, int right, T value, int node, int cl, int cr) {
         if (lazy[node]) {
@@ -138,6 +138,15 @@ public:
         add(left-l,right-l,value,1,0,r-l);
     }
     T queryMax(int left, int right, int node, int cl, int cr) {
+        if (lazy[node]) {
+            treeMax[node] += lazy[node];
+            treeMin[node] += lazy[node];
+            if (cr>cl) {
+                lazy[node*2] += lazy[node];
+                lazy[node*2+1] += lazy[node];
+            }
+            lazyo[node] = 0;
+        }
         if ((left == cl) && (right == cr)) {
             return treeMax[node];
         }
@@ -151,6 +160,15 @@ public:
         }
     }
     T queryMin(int left, int right, int node, int cl, int cr) {
+        if (lazy[node]) {
+            treeMax[node] += lazy[node];
+            treeMin[node] += lazy[node];
+            if (cr>cl) {
+                lazy[node*2] += lazy[node];
+                lazy[node*2+1] += lazy[node];
+            }
+            lazyo[node] = 0;
+        }
         if ((left == cl) && (right == cr)) {
             return treeMin[node];
         }
