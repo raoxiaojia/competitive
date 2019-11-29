@@ -4,88 +4,11 @@ using namespace std;
 
 template<class T> class SumSegTree {
 public:
-    vector<T> tree;
-    vector<T> lazy;
-    int l;
-    int r;
-    SumSegTree(int left, int right, T defaultVal) {
-        l = left;
-        r = right;
-        tree.clear();
-        lazy.clear();
-        tree.resize((r-l+1)*2+10,defaultVal);
-        lazy.resize((r-l+1)*2+10,defaultVal);
-    }
-    SumSegTree(int left, int right, T defaultVal, vector<T> initial) {
-        l = left;
-        r = right;
-        tree.clear();
-        lazy.clear();
-        tree.resize((r-l+1)*2+10,defaultVal);
-        lazy.resize((r-l+1)*2+10,defaultVal);
-        initialize(initial,1,l,r);
-    }
-    void initialize(const vector<T> &initial,int node, int cl, int cr) {
-        if (cl == cr) {
-            tree[node] = initial[l];
-            return ;
-        }
-        int mid=(cl+cr)/2;
-        initialize(initial,node*2,cl,mid);
-        initialize(initial,node*2+1,mid+1,cr);
-        tree[node] = tree[node*2] + tree[node*2+1];
-    }
-    void add(int left, int right, T value, int node, int cl, int cr) {
-        if ((cl == left) && (cr == right)) {
-            lazy[node] += value;
-            return;
-        }
-        int mid = (cl+cr)/2;
-        if (right <= mid) {
-            add(left,right,value,node*2,cl,mid);
-        } else if (left > mid) {
-            add(left,right,value,node*2+1,mid+1,cr);
-        } else {
-            add(left,mid,value,node*2,cl,mid);
-            add(mid+1,right,value,node*2+1,mid+1,cr);
-        }
-    }
-    void add(int left, int right, T value) {
-        add(left-l,right-l,value,1,0,r-l);
-    }
-    T query(int left, int right, int node, int cl, int cr) {
-        if (lazy[node]) {
-            tree[node] += lazy[node]*(cr-cl+1);
-            if (cr>cl) {
-                lazy[node*2] += lazy[node];
-                lazy[node*2+1] += lazy[node];
-            }
-            lazy[node] = 0;
-        }
-        if ((left == cl) && (right == cr)) {
-            return tree[node];
-        }
-        int mid = (cl+cr)/2;
-        if (right <= mid) {
-            return query(left,right,node*2,cl,mid);
-        } else if (left > mid) {
-            return query(left,right,node*2+1,mid+1,cr);
-        } else {
-            return query(left,mid,node*2,cl,mid) + query(mid+1,right,node*2+1,mid+1,cr);
-        }
-    }
-    T query(int left, int right) {
-        return query(left-l,right-l,1,0,r-l);
-    }
-};
-
-template<class T> class MaxMinSegTree {
-public:
     vector<T> treeMax,treeMin;
     vector<T> lazy;
     int l;
     int r;
-    MaxMinSegTree(int left, int right) {
+    SumSegTree(int left, int right, T defaultVal) {
         l = left;
         r = right;
         treeMax.clear();
@@ -93,7 +16,7 @@ public:
         lazy.clear();
         treeMax.resize((r-l+1)*4+10,0);
         treeMin.resize((r-l+1)*4+10,0);
-        lazy.resize((r-l+1)*4+10,0);
+        lazy.resize((r-l+1)*4+10,defaultVal);
     }
     void add(int left, int right, T value, int node, int cl, int cr) {
         if (lazy[node]) {
@@ -171,33 +94,84 @@ public:
     }
 };
 
-/*Convert LCA to RMQ.*/
-class LCA {
-public:
-    vector<vector<int>> t;
-    vector<int> heights;
-    vector<int> f;
-    euler(int node, int h) {
-        heights.push(h);
-        for (auto it=t[node].begin();it<t[node].end();it++) {
-            if (!f[*it]) {
-                f[*it] = heights.size()-1;
-                euler(*it);
-                heights.push(h);
-            }
-        }
-    }
-    LCA(vector<vector<int>> tree, int root) {
-        t = tree;
-        heights.clear();
-        f.clear();
-        f.resize(tree.size());
-        euler(root,1);
-    }
-};
+char actual[1000100];
 
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(0);
-    SumSegTree<pair<int,int>> t;
+    int n;
+    cin>>n;
+    string str;
+    cin>>str;
+    int maxrange = 0;
+    int curpos = 0;
+    for (int i=0;i<n;i++) {
+        if (str[i] == 'R') curpos ++;
+        else if (str[i] == 'L') curpos = max(curpos-1,0);
+        else if ((str[i] == '(') || (str[i] == ')')) {
+            maxrange = max(maxrange,curpos);
+        }
+    }
+    maxrange += 100005;
+    SumSegTree<int> t(0,maxrange,0);
+    curpos = 0;
+    int prevans = 0;
+    int total = 0;
+    for (int i=0;i<n;i++) {
+        if (str[i] == 'R') {
+            curpos ++;
+            cout<<prevans<<' ';
+        }
+        else if (str[i] == 'L') {
+            curpos = max(curpos-1,0);
+            cout<<prevans<<' ';
+        }
+        else if ((str[i] == '(') || (str[i] == ')')) {
+            if (actual[curpos] == str[i]) {
+                cout<<prevans<<' ';
+                continue;
+            }
+            if (str[i] == '(') {
+                total ++;
+                t.add(curpos+1,maxrange,1);
+            } else {
+                total --;
+                t.add(curpos+1,maxrange,-1);
+            }
+            if (actual[curpos] == '(') {
+                total --;
+                t.add(curpos+1,maxrange,-1);
+            } else if (actual[curpos] == ')') {
+                total ++;
+                t.add(curpos+1,maxrange,1);
+            }
+            actual[curpos] = str[i];
+            if ((total == 0) && (t.queryMin(0,maxrange) == 0)) {
+                prevans = t.queryMax(0,maxrange);
+            } else {
+                prevans = -1;
+            }
+            cout<<prevans<<' ';
+        } 
+        else if ((actual[curpos] == '(') || (actual[curpos] == ')' )) {
+            if (actual[curpos] == '(') {
+                total --;
+                t.add(curpos+1,maxrange,-1);
+            } else {
+                total ++;
+                t.add(curpos+1,maxrange,1);
+            }
+            actual[curpos] = 'x';
+            if ((total == 0) && (t.queryMin(0,maxrange) == 0)) {
+                prevans = t.queryMax(0,maxrange);
+            } else {
+                prevans = -1;
+            }
+            cout<<prevans<<' ';
+        } else {
+            actual[curpos] = 'x';
+            cout<<prevans<<' ';
+        }
+    }
+    return 0;
 }
