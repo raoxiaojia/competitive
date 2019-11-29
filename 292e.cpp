@@ -2,24 +2,6 @@
 
 using namespace std;
 
-// safe hash for anti-hacking.
-// usage: unordered_map<T1, T2, custom_hash> hashmap;
-struct custom_hash {
-    static uint64_t splitmix64(uint64_t x) {
-        // http://xorshift.di.unimi.it/splitmix64.c
-        x += 0x9e3779b97f4a7c15;
-        x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9;
-        x = (x ^ (x >> 27)) * 0x94d049bb133111eb;
-        return x ^ (x >> 31);
-    }
-
-    size_t operator()(uint64_t x) const {
-        static const uint64_t FIXED_RANDOM = chrono::steady_clock::now().time_since_epoch().count();
-        return splitmix64(x + FIXED_RANDOM);
-    }
-};
-
-// lazy-propagation segment tree from l (inclusive) to r (inclusive)
 template<class T> class SegTree {
 public:
     vector<T> tree;
@@ -79,11 +61,10 @@ public:
     }
 };
 
-
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(0);
-    SegTree<int> t(-3,4,0);
-    t.add(1,2,2);
-    cout<<t.query(1,3)<<endl;
+    SegTree<pair<int,int>> t;
+    int n,m;
+    cin>>n>>m;
 }
