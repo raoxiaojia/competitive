@@ -23,7 +23,7 @@ public:
         lazy.clear();
         tree.resize((r-l+1)*2+10,defaultVal);
         lazy.resize((r-l+1)*2+10,defaultVal);
-        initialize(initial,1,l,r);
+        initialize(initial,1,0,r-l);
     }
     void initialize(const vector<T> &initial,int node, int cl, int cr) {
         if (cl == cr) {
@@ -94,18 +94,73 @@ public:
 template<class T> class MaxMinSegTree {
 public:
     vector<T> treeMax,treeMin;
+    vector<T> maxPos, minPos;
     vector<T> lazy;
     int l;
     int r;
-    MaxMinSegTree(int left, int right) {
+    bool withPos;
+    MaxMinSegTree(int left, int right, bool recordPos = false) {
         l = left;
         r = right;
+        withPos = recordPos;
         treeMax.clear();
         treeMin.clear();
         lazy.clear();
         treeMax.resize((r-l+1)*2+10,0);
         treeMin.resize((r-l+1)*2+10,0);
         lazy.resize((r-l+1)*2+10,0);
+        if (recordPos) {
+            maxPos.clear();
+            minPos.clear();
+            maxPos.resize((r-l+1)*2+10,0);
+            minPos.resize((r-l+1)*2+10,0);
+        }
+    }
+    MaxMinSegTree(int left, int right, vector<T> initial, bool recordPos = false) {
+        l = left;
+        r = right;
+        treeMax.clear();
+        treeMin.clear();
+        withPos = recordPos;
+        lazy.clear();
+        treeMax.resize((r-l+1)*2+10,0);
+        treeMin.resize((r-l+1)*2+10,0);
+        lazy.resize((r-l+1)*2+10,0);
+        if (recordPos) {
+            maxPos.clear();
+            minPos.clear();
+            maxPos.resize((r-l+1)*2+10,0);
+            minPos.resize((r-l+1)*2+10,0);
+        }
+        initialize(initial, 1, l, r-l);
+    }
+    void initialize(const vector<T> &initial,int node, int cl, int cr) {
+        if (cl == cr) {
+            treeMax[node] = initial[cl];
+            treeMin[node] = initial[cl];
+            if (withPos) {
+                maxPos[node] = cl;
+                minPos[node] = cl;
+            }
+            return ;
+        }
+        int mid=(cl+cr)/2;
+        initialize(initial,node*2,cl,mid);
+        initialize(initial,node*2+1,mid+1,cr);
+        if (treeMax[node*2] > treeMax[node*2+1]) {
+            treeMax[node] = treeMax[node*2]+lazy[node*2];
+            maxPos[node] = maxPos[node*2];
+        } else {
+            treeMax[node] = treeMax[node*2+1];
+            maxPos[node] = maxPos[node*2+1];
+        }
+        if (treeMin[node*2] < treeMin[node*2+1]) {
+            treeMin[node] = treeMin[node*2]+lazy[node*2];
+            minPos[node] = minPos[node*2];
+        } else {
+            treeMin[node] = treeMin[node*2+1];
+            minPos[node] = minPos[node*2+1];
+        }
     }
     void add(int left, int right, T value, int node, int cl, int cr) {
         if (lazy[node]) {
@@ -130,26 +185,31 @@ public:
         int mid = (cl+cr)/2;
         if (right <= mid) {
             add(left,right,value,node*2,cl,mid);
-            treeMax[node] = max(treeMax[node*2]+lazy[node*2],treeMax[node*2+1]+lazy[node*2+1]);
-            treeMin[node] = min(treeMin[node*2]+lazy[node*2],treeMin[node*2+1]+lazy[node*2+1]);
-        //    cout<<node<<' '<<treeMax[node]<<' '<<treeMin[node]<<endl;
         } else if (left > mid) {
             add(left,right,value,node*2+1,mid+1,cr);
-            treeMax[node] = max(treeMax[node*2]+lazy[node*2],treeMax[node*2+1]+lazy[node*2+1]);
-            treeMin[node] = min(treeMin[node*2]+lazy[node*2],treeMin[node*2+1]+lazy[node*2+1]);
-          //  cout<<node<<' '<<treeMax[node]<<' '<<treeMin[node]<<endl;
         } else {
             add(left,mid,value,node*2,cl,mid);
             add(mid+1,right,value,node*2+1,mid+1,cr);
-            treeMax[node] = max(treeMax[node*2]+lazy[node*2],treeMax[node*2+1]+lazy[node*2+1]);
-            treeMin[node] = min(treeMin[node*2]+lazy[node*2],treeMin[node*2+1]+lazy[node*2+1]);
-         //   cout<<node<<' '<<treeMax[node]<<' '<<treeMin[node]<<endl;
+        }
+        if (treeMax[node*2] + lazy[node*2] > treeMax[node*2+1] + lazy[node*2+1]) {
+            treeMax[node] = treeMax[node*2]+lazy[node*2];
+            maxPos[node] = maxPos[node*2];
+        } else {
+            treeMax[node] = treeMax[node*2+1]+lazy[node*2+1];
+            maxPos[node] = maxPos[node*2+1];
+        }
+        if (treeMin[node*2] + lazy[node*2] < treeMin[node*2+1] + lazy[node*2+1]) {
+            treeMin[node] = treeMin[node*2]+lazy[node*2];
+            minPos[node] = minPos[node*2];
+        } else {
+            treeMin[node] = treeMin[node*2+1]+lazy[node*2+1];
+            minPos[node] = minPos[node*2+1];
         }
     }
     void add(int left, int right, T value) {
         add(left-l,right-l,value,1,0,r-l);
     }
-    T queryMax(int left, int right, int node, int cl, int cr) {
+    pair<T,int> queryMax(int left, int right, int node, int cl, int cr) {
         if (lazy[node]) {
             treeMax[node] += lazy[node];
             treeMin[node] += lazy[node];
@@ -160,7 +220,8 @@ public:
             lazy[node] = 0;
         }
         if ((left == cl) && (right == cr)) {
-            return treeMax[node];
+            if (withPos) return make_pair(treeMax[node],maxPos[node]-l);
+            else return make_pair(treeMax[node],-1);
         }
         int mid = (cl+cr)/2;
         if (right <= mid) {
@@ -168,10 +229,15 @@ public:
         } else if (left > mid) {
             return queryMax(left,right,node*2+1,mid+1,cr);
         } else {
-            return max(queryMax(left,mid,node*2,cl,mid), queryMax(mid+1,right,node*2+1,mid+1,cr));
+            auto lMax = queryMax(left,mid,node*2,cl,mid);
+            auto rMax = queryMax(mid+1,right,node*2+1,mid+1,cr);
+            if (lMax.first > rMax.first) {
+                return lMax;
+            }
+            return rMax;
         }
     }
-    T queryMin(int left, int right, int node, int cl, int cr) {
+    pair<T,int> queryMin(int left, int right, int node, int cl, int cr) {
         if (lazy[node]) {
             treeMax[node] += lazy[node];
             treeMin[node] += lazy[node];
@@ -182,7 +248,8 @@ public:
             lazy[node] = 0;
         }
         if ((left == cl) && (right == cr)) {
-            return treeMin[node];
+            if (withPos) return make_pair(treeMin[node],maxPos[node]-l);
+            return make_pair(treeMin[node],-1);
         }
         int mid = (cl+cr)/2;
         if (right <= mid) {
@@ -190,13 +257,18 @@ public:
         } else if (left > mid) {
             return queryMin(left,right,node*2+1,mid+1,cr);
         } else {
-            return min(queryMin(left,mid,node*2,cl,mid), queryMin(mid+1,right,node*2+1,mid+1,cr));
+            auto lMin = queryMin(left,mid,node*2,cl,mid);
+            auto rMin = queryMin(mid+1,right,node*2+1,mid+1,cr);
+            if (lMin.first < rMin.first) {
+                return lMin;
+            }
+            return rMin;
         }
     }
-    T queryMax(int left, int right) {
+    pair<T,int> queryMax(int left, int right) {
         return queryMax(left-l,right-l,1,0,r-l);
     }
-    T queryMin(int left, int right) {
+    pair<T,int> queryMin(int left, int right) {
         return queryMin(left-l,right-l,1,0,r-l);
     }
 };
@@ -207,13 +279,17 @@ public:
     vector<vector<int>> t;
     vector<int> heights;
     vector<int> f;
+    vector<int> nodes;
+    MaxMinSegTree<int> *segtree;
     void euler(int node, int h) {
         heights.push_back(h);
+        nodes.push_back(node);
         for (auto it=t[node].begin();it<t[node].end();it++) {
             if (!f[*it]) {
                 f[*it] = heights.size()-1;
                 euler(*it,h+1);
                 heights.push_back(h);
+                nodes.push_back(node);
             }
         }
     }
@@ -223,6 +299,10 @@ public:
         f.clear();
         f.resize(tree.size());
         euler(root,1);
+        segtree = new MaxMinSegTree<int>(0,heights.size(),heights,true);
+    }
+    int query(int x, int y) {
+        return nodes[segtree->queryMin(f[x],f[y]).second];
     }
 };
 
