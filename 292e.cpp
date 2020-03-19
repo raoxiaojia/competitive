@@ -1,126 +1,60 @@
-#include <bits/stdc++.h>
+#include "bits/stdc++.h"
 
 using namespace std;
 
-template<class T> class SumSegTree {
+template<class T> class UpdateSegTree {
 public:
     vector<T> tree;
-    vector<T> lazy;
+    vector<bool> uniform;
     int l;
     int r;
-    SumSegTree(int left, int right, T defaultVal) {
+    UpdateSegTree(int left, int right, T defaultVal) {
         l = left;
         r = right;
         tree.clear();
-        lazy.clear();
-        tree.resize((r-l+1)*2+10,defaultVal);
-        lazy.resize((r-l+1)*2+10,defaultVal);
+        uniform.clear();
+        tree.resize((r-l+1)*4+5,defaultVal);
+        uniform.resize((r-l+1)*4+5,true);
     }
-    MaxSegTree(int left, int right, T defaultVal, vector<T> initial) {
+    UpdateSegTree(int left, int right, T defaultVal, vector<T> initial) {
         l = left;
         r = right;
         tree.clear();
-        lazy.clear();
-        tree.resize((r-l+1)*2+10,defaultVal);
-        lazy.resize((r-l+1)*2+10,defaultVal);
-        initialize(initial,0,l,r);
+        uniform.clear();
+        tree.resize((r-l+1)*4+5,defaultVal);
+        uniform.resize((r-l+1)*4+5,true);
+        initialize(initial,1,0,r-l);
     }
     void initialize(const vector<T> &initial,int node, int cl, int cr) {
         if (cl == cr) {
             tree[node] = initial[l];
+            uniform[node] = true;
             return ;
         }
         int mid=(cl+cr)/2;
         initialize(initial,node*2,cl,mid);
         initialize(initial,node*2+1,mid+1,cr);
-        tree[node] = tree[node*2] + tree[node*2+1];
+        tree[node] = 0;
+        uniform[node] = false;
     }
-    void add(int left, int right, T value, int node, int cl, int cr) {
-        if ((cl == left) && (cr == right)) {
-            lazy[node] += value;
-            return;
-        }
-        int mid = (cl+cr)/2;
-        if (right <= mid) {
-            add(left,right,value,node*2,cl,mid);
-        } else if (left > mid) {
-            add(left,right,value,node*2+1,mid+1,cr);
-        } else {
-            add(left,mid,value,node*2,cl,mid);
-            add(mid+1,right,value,node*2+1,mid+1,cr);
+    void propagate(int node, int cl, int cr) {
+        if (cr>cl) {
+            tree[node*2] = tree[node];
+            uniform[node*2] = true;
+            tree[node*2+1] = tree[node];
+            uniform[node*2+1] = true;
         }
     }
-    void add(int left, int right, T value) {
-        add(left-l,right-l,value,0,0,r-l);
-    }
-    T query(int left, int right, int node, int cl, int cr) {
-        if (lazy[node]) {
-            tree[node] += lazy[node]*(cr-cl+1);
-            if (cr>cl) {
-                lazy[node*2] += lazy[node];
-                lazy[node*2+1] += lazy[node];
-            }
-            lazy[node] = 0;
-        }
-        if ((left == cl) && (right == cr)) {
-            return tree[node];
-        }
-        int mid = (cl+cr)/2;
-        if (right <= mid) {
-            return query(left,right,node*2,cl,mid);
-        } else if (left > mid) {
-            return query(left,right,node*2+1,mid+1,cr);
-        } else {
-            return query(left,mid,node*2,cl,mid) + query(mid+1,right,node*2+1,mid+1,cr);
-        }
-    }
-    T query(int left, int right) {
-        return query(left-l,right-l,0,0,r-l);
-    }
-};
-
-template<class T> class MaxSegTree {
-public:
-    vector<T> tree;
-    vector<T> lazy;
-    int l;
-    int r;
-    T minVal;
-    MaxSegTree(int left, int right, T defaultVal) {
-        l = left;
-        r = right;
-        minVal = defaultVal;
-        tree.clear();
-        lazy.clear();
-        tree.resize((r-l+1)*2+10,defaultVal);
-        lazy.resize((r-l+1)*2+10,defaultVal);
-    }
-    MaxSegTree(int left, int right, T defaultVal, vector<T> initial) {
-        l = left;
-        r = right;
-        minVal = defaultVal;
-        tree.clear();
-        lazy.clear();
-        tree.resize((r-l+1)*2+10,defaultVal);
-        lazy.resize((r-l+1)*2+10,defaultVal);
-        initialize(initial,0,l,r);
-    }
-    void initialize(const vector<T> &initial,int node, int cl, int cr) {
-        if (cl == cr) {
-            tree[node] = initial[l];
-            return ;
-        }
-        int mid=(cl+cr)/2;
-        initialize(initial,node*2,cl,mid);
-        initialize(initial,node*2+1,mid+1,cr);
-        tree[node] = max(tree[node*2], tree[node*2+1]);
-    }
-
     void update(int left, int right, T value, int node, int cl, int cr) {
         if ((cl == left) && (cr == right)) {
-            lazy[node] = value;
+            tree[node] = value;
+            uniform[node] = true;
             return;
         }
+        if (uniform[node]) {
+            propagate(node,cl,cr);
+        }
+        uniform[node] = false;
         int mid = (cl+cr)/2;
         if (right <= mid) {
             update(left,right,value,node*2,cl,mid);
@@ -132,61 +66,63 @@ public:
         }
     }
     void update(int left, int right, T value) {
-        update(left-l,right-l,value,0,0,r-l);
+        update(left-l,right-l,value,1,0,r-l);
     }
-    T query(int left, int right, int node, int cl, int cr) {
-        if (lazy[node] != minVal) {
-            tree[node] = max(lazy[node],tree[node]);
-            if (cr>cl) {
-                lazy[node*2] = lazy[node];
-                lazy[node*2+1] = lazy[node];
-            }
-            lazy[node] = minVal;
-        }
-        if ((left == cl) && (right == cr)) {
+    T query(int x, int node, int cl, int cr) {
+        if (uniform[node]) {
             return tree[node];
         }
         int mid = (cl+cr)/2;
-        if (right <= mid) {
-            return query(left,right,node*2,cl,mid);
-        } else if (left > mid) {
-            return query(left,right,node*2+1,mid+1,cr);
+        if (x <= mid) {
+            return query(x,node*2,cl,mid);
         } else {
-            return max(query(left,mid,node*2,cl,mid), query(mid+1,right,node*2+1,mid+1,cr));
+            return query(x,node*2+1,mid+1,cr);
         }
     }
-    T query(int left, int right) {
-        return query(left-l,right-l,0,0,r-l);
-    }
-};
-
-/*Convert LCA to RMQ.*/
-class LCA {
-public:
-    vector<vector<int>> t;
-    vector<int> heights;
-    vector<int> f;
-    euler(int node, int h) {
-        heights.push(h);
-        for (auto it=t[node].begin();it<t[node].end();it++) {
-            if (!f[*it]) {
-                f[*it] = heights.size()-1;
-                euler(*it);
-                heights.push(h);
-            }
-        }
-    }
-    LCA(vector<vector<int>> tree, int root) {
-        t = tree;
-        heights.clear();
-        f.clear();
-        f.resize(tree.size());
-        euler(root,1);
+    T query(int x) {
+        return query(x-l,1,0,r-l);
     }
 };
 
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(0);
-    SumSegTree<pair<int,int>> t;
+
+    int n,m;
+
+    cin>>n>>m;
+
+    vector<int> a(n);
+    vector<int> b(n);
+
+    UpdateSegTree<pair<int,int>> stree(1,n,make_pair(-1,-1));
+
+    for (int i=0;i<n;i++) {
+        cin>>a[i];
+    }
+    for (int i=0;i<n;i++) {
+        cin>>b[i];
+    }
+
+    for (int i=0;i<m;i++) {
+        int op;
+        cin>>op;
+        if (op == 1) {
+            int x,y,z;
+            cin>>x>>y>>z;
+            stree.update(y,y+z-1,make_pair(x,y));
+        } else {
+            int x;
+            cin>>x;
+            auto val = stree.query(x);
+            if (val.first == -1) {
+                cout<<b[x-1]<<endl;
+            } else {
+                int pos = val.first + (x-val.second);
+                cout<<a[pos-1]<<endl;
+            }
+        }
+    }
+
+    return 0;
 }
