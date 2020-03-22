@@ -229,17 +229,17 @@ public:
         initialize(initial,node*2+1,mid+1,cr);
         if (treeMax[node*2] > treeMax[node*2+1]) {
             treeMax[node] = treeMax[node*2]+lazy[node*2];
-            if (recordPos) maxPos[node] = maxPos[node*2];
+            if (withPos) maxPos[node] = maxPos[node*2];
         } else {
             treeMax[node] = treeMax[node*2+1];
-            if (recordPos) maxPos[node] = maxPos[node*2+1];
+            if (withPos) maxPos[node] = maxPos[node*2+1];
         }
         if (treeMin[node*2] < treeMin[node*2+1]) {
             treeMin[node] = treeMin[node*2]+lazy[node*2];
-            if (recordPos) minPos[node] = minPos[node*2];
+            if (withPos) minPos[node] = minPos[node*2];
         } else {
             treeMin[node] = treeMin[node*2+1];
-            if (recordPos) minPos[node] = minPos[node*2+1];
+            if (withPos) minPos[node] = minPos[node*2+1];
         }
     }
 
@@ -278,17 +278,17 @@ public:
         }
         if (treeMax[node*2] + lazy[node*2] > treeMax[node*2+1] + lazy[node*2+1]) {
             treeMax[node] = treeMax[node*2]+lazy[node*2];
-            if (recordPos) maxPos[node] = maxPos[node*2];
+            if (withPos) maxPos[node] = maxPos[node*2];
         } else {
             treeMax[node] = treeMax[node*2+1]+lazy[node*2+1];
-            if (recordPos) maxPos[node] = maxPos[node*2+1];
+            if (withPos) maxPos[node] = maxPos[node*2+1];
         }
         if (treeMin[node*2] + lazy[node*2] < treeMin[node*2+1] + lazy[node*2+1]) {
             treeMin[node] = treeMin[node*2]+lazy[node*2];
-            if (recordPos) minPos[node] = minPos[node*2];
+            if (withPos) minPos[node] = minPos[node*2];
         } else {
             treeMin[node] = treeMin[node*2+1]+lazy[node*2+1];
-            if (recordPos) minPos[node] = minPos[node*2+1];
+            if (withPos) minPos[node] = minPos[node*2+1];
         }
     }
     void add(int left, int right, T value) {
@@ -379,10 +379,78 @@ public:
     }
 };
 
-/*max flow*/
 class Dinic {
 public:
-    
+    vector<unordered_map<int,long long>> cap;
+    vector<unordered_map<int,long long>> f;
+    vector<unordered_map<int,long long>> res;
+    int n;
+    int src;
+    int dst;
+    vector<int> levelGraph;
+    vector<int> augmentingPath;
+    long long inf = (1<<50);
+    Dinic(vector<unordered_map<int,long long>> c, int s, int t) {
+        cap = c;
+        src = s;
+        dst = t;
+        inf = inf;
+        n = cap.size();
+        levelGraph.clear();
+        levelGraph.resize(n);
+        f.resize(n);
+    }
+
+    long long findAugmentingPath(int cur, long long curCap) {
+        if (cur == dst) return curCap;
+        for (auto& x:res[cur]) {
+            if (levelGraph[x.first] == levelGraph[cur] + 1) {
+                augmentingPath.push_back(x.first);
+                bool ret = findAugmentingPath(x.first,min(curCap,x.second));
+                if (ret) return curCap;
+                augmentingPath.pop_back();
+            }
+        }
+        return -1;
+    }
+
+    vector<unordered_map<int,long long>> getMaxFlow() {
+        res = cap;
+        while (1) {
+            levelGraph.clear();
+            levelGraph.assign(n,0);
+            levelGraph[src] = 1;
+            deque<int> q;
+            q.push_back(src);
+            while (q.size()) {
+                int node = q.front();
+                for (auto& x:cap[node]) {
+                    if (!levelGraph[x.first] && res[node].find(x.first) != res[node].end() && res[node][x.first] > 0) {
+                        levelGraph[x.first] = levelGraph[node] + 1;
+                        q.push_back(node);
+                    }
+                }
+                q.pop_front();
+            }
+            if (!levelGraph[dst]) break;
+            while (1) {
+                augmentingPath.clear();
+                augmentingPath.push_back(src);
+                int augCap = findAugmentingPath(src,inf);
+                if (augCap < 0) {
+                    break;
+                }
+                for (int i=0;i<augmentingPath.size()-1;i++) {
+                    res[augmentingPath[i]][augmentingPath[i+1]] = res[augmentingPath[i]][augmentingPath[i+1]] - augCap;
+                    res[augmentingPath[i+1]][augmentingPath[i]] = res[augmentingPath[i+1]][augmentingPath[i]] + augCap;
+                    f[augmentingPath[i]][augmentingPath[i+1]] = f[augmentingPath[i]][augmentingPath[i+1]] + augCap;
+                    f[augmentingPath[i+1]][augmentingPath[i]] = f[augmentingPath[i+1]][augmentingPath[i]] - augCap;
+                }
+            }
+        }
+        return f;
+    }
+
 };
 
 int main() {
