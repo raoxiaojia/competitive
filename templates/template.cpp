@@ -389,7 +389,7 @@ public:
     int dst;
     vector<int> levelGraph;
     vector<int> augmentingPath;
-    long long inf = (1<<50);
+    long long inf = (((long long)1)<<50);
     Dinic(vector<unordered_map<int,long long>> c, int s, int t) {
         cap = c;
         src = s;
@@ -407,7 +407,7 @@ public:
             if (levelGraph[x.first] == levelGraph[cur] + 1) {
                 augmentingPath.push_back(x.first);
                 bool ret = findAugmentingPath(x.first,min(curCap,x.second));
-                if (ret) return curCap;
+                if (ret > 0) return curCap;
                 augmentingPath.pop_back();
             }
         }
@@ -427,19 +427,24 @@ public:
                 for (auto& x:cap[node]) {
                     if (!levelGraph[x.first] && res[node].find(x.first) != res[node].end() && res[node][x.first] > 0) {
                         levelGraph[x.first] = levelGraph[node] + 1;
-                        q.push_back(node);
+                        q.push_back(x.first);
                     }
                 }
                 q.pop_front();
             }
+            for (int i=0;i<levelGraph.size();i++) {
+                cout<<levelGraph[i];
+            }
+            cout<<endl;
             if (!levelGraph[dst]) break;
             while (1) {
                 augmentingPath.clear();
                 augmentingPath.push_back(src);
                 int augCap = findAugmentingPath(src,inf);
-                if (augCap < 0) {
+                if (augCap <= 0) {
                     break;
                 }
+                cout<<augCap<<endl;
                 for (int i=0;i<augmentingPath.size()-1;i++) {
                     res[augmentingPath[i]][augmentingPath[i+1]] = res[augmentingPath[i]][augmentingPath[i+1]] - augCap;
                     res[augmentingPath[i+1]][augmentingPath[i]] = res[augmentingPath[i+1]][augmentingPath[i]] + augCap;
@@ -456,5 +461,25 @@ public:
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(0);
+    vector<unordered_map<int, long long>> cap;
+    unordered_map<int, long long> a,b,c,d;
+    a[1] = 3;
+    a[2] = 1;
+    b[2] = 1;
+    b[3] = 1;
+    c[3] = 2;
+    cap.push_back(a);
+    cap.push_back(b);
+    cap.push_back(c);
+    cap.push_back(d);
+
+    Dinic n(cap, 0, 3);
+    auto f = n.getMaxFlow();
+    for (int i=0;i<f.size();i++) {
+        for (auto& it: f[i]) {
+            cout<<it.first<<' '<<it.second<<endl;
+        }
+    }
+
     return 0;
 }
